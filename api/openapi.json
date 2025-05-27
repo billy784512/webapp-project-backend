@@ -112,6 +112,9 @@
               }
             }
           },
+          "408": {
+            "description": "Match timeout"
+          },
           "422": {
             "description": "Validation Error",
             "content": {

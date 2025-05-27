@@ -17,4 +17,4 @@ class MatchupService:
             fut1.set_result(room_id)
             fut2.set_result(room_id)
 
-        return await future
+        return await asyncio.wait_for(future, timeout=30.0)
