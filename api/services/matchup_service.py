@@ -1,9 +1,9 @@
 import asyncio
 import uuid
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, List
 
-from utils.match_room_cache import get_or_create_room_data 
-# 從快取中取得或建立「該對戰房」的題目（含圖片與顏色列表）
+from utils.match_room_cache import get_or_create_room_data
+# get_or_create_room_data(room_id: str, loader_fn: Callable[[], dict]) -> dict
 
 class MatchupService:
     def __init__(self):
@@ -25,7 +25,7 @@ class MatchupService:
 
         try:
             return await asyncio.wait_for(future, timeout=30.0)
-        except asyncio.TimeoutError: # 如果這個使用者在 30 秒內沒有成功配對，就拋出TimeoutError
+        except asyncio.TimeoutError:  # 如果這個使用者在 30 秒內沒有成功配對，就拋出TimeoutError
             raise TimeoutError("配對逾時")
 
     def get_room_id(self, user_id: str) -> Optional[str]: # 傳回該使用者的房號（如未配對會是 None）
@@ -34,26 +34,43 @@ class MatchupService:
     def is_user_matched(self, user_id: str) -> bool: # 查詢某個 user 是否已成功配對
         return user_id in self.user_room_map
 
-    # Spec 1
+    # 取得該 user 的題目圖片 (image bytes)
     def get_game_image_for_user(self, user_id: str) -> Optional[bytes]:
-        room_id = self.get_room_id(user_id) # 根據 user_id 取得房號，若尚未配對成功則回傳 None
-        if not room_id:
+        room_id = self.get_room_id(user_id)
+        if not room_id: # 根據 user_id 取得房號，若尚未配對成功則回傳 None
             return None
 
-        # 若是第一次這個房號被查詢，則讀取圖片並生成顏色表
-        def loader(): 
-            # or 可改成從題庫中抽圖
+        def loader(): # 若是第一次這個房號被查詢，則讀取圖片並生成顏色表
             try:
                 with open("assets/default.jpg", "rb") as f: # 假設圖片放在 assets/default.jpg
                     return {
-                        "image": f.read(),  # 圖片bytes
-                        "colors": ["#FF0000", "#00FF00", "#0000FF"] 
+                        "image": f.read(), # 圖片bytes
+                        "colors": ["#FF0000", "#00FF00", "#0000FF"]
                     }
             except FileNotFoundError:
                 return {"image": None, "colors": []}
 
-        # 透過 room_id 拿到這一場對戰共用的題目資料（快取機制）
+        data = get_or_create_room_data(room_id, loader) # 透過 room_id 拿到這一場對戰共用的題目資料
+        return data.get("image")  # 回傳圖片給controller
+
+    # Spec 2：取得該 user 的題目顏色列表
+    def get_color_list_for_user(self, user_id: str) -> Optional[List[str]]:
+        room_id = self.get_room_id(user_id)
+        if not room_id:
+            return None
+
+        def loader():
+            try:
+                with open("assets/default.jpg", "rb") as f:
+                    return {
+                        "image": f.read(),
+                        "colors": ["#FF0000", "#00FF00", "#0000FF"]
+                    }
+            except FileNotFoundError:
+                return {"image": None, "colors": []}
+
         data = get_or_create_room_data(room_id, loader)
-        return data.get("image") # 回傳圖片給controller（由 FastAPI router 包裝 image/jpeg 回應）
+        return data.get("colors")
+
 
 
