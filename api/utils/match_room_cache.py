@@ -1,7 +1,7 @@
 from typing import Callable, Dict, Any
 import threading
 
-# 全域快取 room_id 對應的題目資料（如圖像、顏色列表等）
+# 快取 room_id 對應的題目資料（如圖像、顏色列表等）
 _room_data_cache: Dict[str, Dict[str, Any]] = {}
 
 # 加鎖，避免同時初始化同個 room 資料
