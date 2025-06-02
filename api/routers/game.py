@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from services.matchup_service import MatchupService
 from services.user_service import UserService
 
-router = APIRouter(prefix="/setup")
+router = APIRouter(prefix="/game")
 match_service = MatchupService.get_instance()
 user_service = UserService()
 
@@ -37,7 +37,7 @@ def get_room_users(room_id: str = Query(...)):
         }
         return JSONResponse(content=result, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-@router.get("/game")
+@router.get("/info")
 def get_room_image(room_id: str = Query(...)):
     try:
         image_path = match_service.get_image_path_by_roomid(room_id)
@@ -57,3 +57,4 @@ def get_room_image(room_id: str = Query(...)):
             "message": "Internal Server Error"
         }
         return JSONResponse(content=result, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    

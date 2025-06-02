@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers.auth import router as auth_router
 from routers.matchup import router as matchup_router
-from routers.setup import router as setup_router
+from routers.game import router as setup_router
 
 
 app = FastAPI()

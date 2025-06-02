@@ -2,7 +2,7 @@ import httpx
 import asyncio
 
 BASE_URL = "http://localhost:8080/match"
-SETUP_BASE_URL = "http://localhost:8080/setup"
+SETUP_BASE_URL = "http://localhost:8080/game"
 PASSKEY = "room999"
 
 async def post_passkey(user_id: str, timeout=35.0):

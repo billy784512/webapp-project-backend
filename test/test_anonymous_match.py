@@ -2,7 +2,7 @@ import httpx
 import asyncio
 
 BASE_URL = "http://localhost:8080/match"
-SETUP_BASE_URL = "http://localhost:8080/setup"
+SETUP_BASE_URL = "http://localhost:8080/game"
 
 async def post_anonymous(user_id: str, timeout=35.0):
     async with httpx.AsyncClient(timeout=timeout) as client:
