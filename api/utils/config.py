@@ -11,5 +11,6 @@ class Config:
 
     class DIR:
         USER_DATA="volume/user"
+        IMAGE="volume/images"
 
 config = Config()
