@@ -3,74 +3,136 @@ import uuid
 from typing import Tuple, Dict, Optional, List
 
 from utils.match_room_cache import get_or_create_room_data
-# get_or_create_room_data(room_id: str, loader_fn: Callable[[], dict]) -> dict
+
+import asyncio
+import uuid
+from typing import Tuple, Dict, List
+from collections import defaultdict
 
 class MatchupService:
+    _instance: Optional["MatchupService"] = None
+
     def __init__(self):
-        self.queue: asyncio.Queue[Tuple[asyncio.Future, str]] = asyncio.Queue()
-        self.user_room_map: Dict[str, str] = {} # 記錄每個使用者對應的room_id，用來查詢是否已配對、取得房間資料
+        if MatchupService._instance is not None:
+            raise Exception("Use MatchupService.get_instance().")
+        MatchupService._instance = self
 
-    async def join_queue(self, user_id: str) -> str:
+        self.anonymous_queue: List[Tuple[asyncio.Future, str]] = []
+        self.anonymous_lock = asyncio.Lock()
+
+        self.passkey_queues: Dict[str, List[Tuple[asyncio.Future, str]]] = {}
+        self.passkey_locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+        # key: room_id, val: user_id_list
+        self.room_user_map: Dict[str, List[str]] = defaultdict(list)
+
+        self._matching_task = asyncio.create_task(self._match_anonymous_loop())
+        self._cleanup_task = asyncio.create_task(self._cleanup_passkey_queues_loop())
+
+    @classmethod
+    def get_instance(cls) -> "MatchupService":
+        if cls._instance is None:
+            cls._instance = MatchupService()
+        return cls._instance
+    
+    # ========== PUBLIC API ==========
+
+    async def anonymous_match(self, user_id: str) -> str:
         future = asyncio.get_event_loop().create_future()
-        await self.queue.put((future, user_id))
-
-        if self.queue.qsize() >= 2:
-            (fut1, user1) = await self.queue.get()
-            (fut2, user2) = await self.queue.get()
-            room_id = str(uuid.uuid4())
-            self.user_room_map[user1] = room_id # 為他們產生一個唯一room_id
-            self.user_room_map[user2] = room_id
-            fut1.set_result(room_id)
-            fut2.set_result(room_id)
+        async with self.anonymous_lock:
+            self.anonymous_queue.append((future, user_id))
 
         try:
-            return await asyncio.wait_for(future, timeout=30.0)
-        except asyncio.TimeoutError:  # 如果這個使用者在 30 秒內沒有成功配對，就拋出TimeoutError
-            raise TimeoutError("配對逾時")
+            return await asyncio.wait_for(future, timeout=10.0)
+        except asyncio.TimeoutError:
+            await self.cancel_match(user_id)
+            raise TimeoutError("Match Timeout")
+        except asyncio.CancelledError:
+            return {"status": "failed", "message": "Match cancelled"}
 
-    def get_room_id(self, user_id: str) -> Optional[str]: # 傳回該使用者的房號（如未配對會是 None）
-        return self.user_room_map.get(user_id)
+    async def passkey_match(self, user_id: str, passkey: str) -> str:
+        future = asyncio.get_event_loop().create_future()
+        async with self.passkey_locks[passkey]:
+            queue = self.passkey_queues.setdefault(passkey, [])
+            queue.append((future, user_id))
 
-    def is_user_matched(self, user_id: str) -> bool: # 查詢某個 user 是否已成功配對
-        return user_id in self.user_room_map
+        if len(queue) >= 2:
+            await self._match_passkey_queue(passkey)
 
-    # 取得該 user 的題目圖片 (image bytes)
-    def get_game_image_for_user(self, user_id: str) -> Optional[bytes]:
-        room_id = self.get_room_id(user_id)
-        if not room_id: # 根據 user_id 取得房號，若尚未配對成功則回傳 None
-            return None
+        try:
+            return await asyncio.wait_for(future, timeout=10.0)
+        except asyncio.TimeoutError:
+            await self.cancel_match(user_id)
+            raise TimeoutError(f"Match timeout for passkey '{passkey}'")
+        except asyncio.CancelledError:
+                return {"status": "failed", "message": "Match cancelled"}
 
-        def loader(): # 若是第一次這個房號被查詢，則讀取圖片並生成顏色表
-            try:
-                with open("assets/default.jpg", "rb") as f: # 假設圖片放在 assets/default.jpg
-                    return {
-                        "image": f.read(), # 圖片bytes
-                        "colors": ["#FF0000", "#00FF00", "#0000FF"]
-                    }
-            except FileNotFoundError:
-                return {"image": None, "colors": []}
+    async def cancel_match(self, user_id: str):
+        async with self.anonymous_lock:
+            new_queue = []
+            for f, u in self.anonymous_queue:
+                if u == user_id:
+                    f.cancel()
+                else:
+                    new_queue.append((f, u))
+            self.anonymous_queue = new_queue
 
-        data = get_or_create_room_data(room_id, loader) # 透過 room_id 拿到這一場對戰共用的題目資料
-        return data.get("image")  # 回傳圖片給controller
+        for passkey, lock in self.passkey_locks.items():
+            async with lock:
+                if passkey not in self.passkey_queues:
+                    continue
+                self.passkey_queues[passkey] = [(f, u) for (f, u) in self.passkey_queues[passkey] if u != user_id]
 
-    # Spec 2：取得該 user 的題目顏色列表
-    def get_color_list_for_user(self, user_id: str) -> Optional[List[str]]:
-        room_id = self.get_room_id(user_id)
-        if not room_id:
-            return None
+    def get_userid_by_roomid(self, room_id: str):
+        try:
+            return self.room_user_map[room_id]
+        except Exception as e:
+            raise e
+    # ========== BACKGROUND TASKS ==========
 
-        def loader():
-            try:
-                with open("assets/default.jpg", "rb") as f:
-                    return {
-                        "image": f.read(),
-                        "colors": ["#FF0000", "#00FF00", "#0000FF"]
-                    }
-            except FileNotFoundError:
-                return {"image": None, "colors": []}
+    async def _match_anonymous_loop(self):
+        while True:
+            async with self.anonymous_lock:
+                if len(self.anonymous_queue) >= 2:
+                    (fut1, user1) = self.anonymous_queue.pop(0)
+                    (fut2, user2) = self.anonymous_queue.pop(0)
 
-        data = get_or_create_room_data(room_id, loader)
-        return data.get("colors")
+                    room_id = str(uuid.uuid4())
+                    self.room_user_map[room_id].append(user1)
+                    self.room_user_map[room_id].append(user2)
 
+                    fut1.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2]})
+                    fut2.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2]})
+                else:
+                    await asyncio.sleep(0.1)
 
+    async def _match_passkey_queue(self, passkey: str):
+        async with self.passkey_locks[passkey]:
+            queue = self.passkey_queues.get(passkey)
+            if queue is None or len(queue) < 2:
+                return
 
+            fut1, user1 = queue.pop(0)
+            fut2, user2 = queue.pop(0)
+
+            room_id = str(uuid.uuid4())
+            self.room_user_map[room_id].append(user1)
+            self.room_user_map[room_id].append(user2)
+
+            fut1.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2], "passkey": passkey})
+            fut2.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2], "passkey": passkey})
+
+    async def _cleanup_passkey_queues_loop(self):
+        while True:
+            await asyncio.sleep(60)
+            keys_to_delete = []
+            for key, queue in self.passkey_queues.items():
+                async with self.passkey_locks[key]:
+                    if not queue:
+                        keys_to_delete.append(key)
+            for key in keys_to_delete:
+                async with self.passkey_locks[key]:
+                    if key in self.passkey_queues and not self.passkey_queues[key]:
+                        del self.passkey_queues[key]
+                        del self.passkey_locks[key]
+                        print(f"[Cleanup] Removed empty passkey queue: {key}")

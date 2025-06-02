@@ -14,10 +14,12 @@ class UserService:
         self.dao = UserDAO()
         self.JWT_SECRET_KEY = config.JWT.SECRET_KEY
 
-    def register(self, account_name: str, password: str) -> dict:
+    def register(self, account_name: str, password: str, user_id: str=None) -> dict:
+        if not user_id:
+            user_id = uuid4().hex
         hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = User(
-            user_id=uuid4().hex,
+            user_id=user_id,
             account_name=account_name,
             password_name=hashed_pw
         )

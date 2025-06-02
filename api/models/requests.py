@@ -10,3 +10,5 @@ class LoginRequest(BaseModel):
 
 class MatchRequest(BaseModel):
     user_id: str
+    user_name: str
+    passkey: str=None

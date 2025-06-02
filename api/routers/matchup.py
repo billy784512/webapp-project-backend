@@ -1,31 +1,69 @@
-from fastapi import APIRouter, Query, Response, status
+import asyncio
+
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-from services.matchup_service import matchup_service  
+from models.requests import MatchRequest
+from services.matchup_service import MatchupService
+from services.user_service import UserService
 
-router = APIRouter(prefix="/match", tags=["Matchup"])
+router = APIRouter(prefix="/match")
+match_service = MatchupService().get_instance()
+user_service = UserService()
 
-@router.get("/game_image")
-async def get_game_image(userid: str = Query(..., alias="userid")):
-    """
-    Spec1: 回傳對戰用的圖片 bytes，Content-Type: image/jpeg
-    """
-    image_data = matchup_service.get_game_image_for_user(userid)
-    if image_data:
-        return Response(content=image_data, media_type="image/jpeg")
-    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "Image not found or user not matched"})
+@router.post(
+    "/anonymous", 
+    status_code=200,
+    responses={
+        408: {"description": "Match timeout"}
+    })
+async def match_user(req: MatchRequest):
+    try:
+        if not user_service.dao.get_by_userid(req.user_id):
+            user_service.register(req.user_name, "password", req.user_id)
+        result = await match_service.anonymous_match(req.user_id)
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+    except asyncio.TimeoutError:
+        result = {
+            "status": "failed",
+            "message": "Match timeout"
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_408_REQUEST_TIMEOUT)
 
+@router.post(
+    "/passkey", 
+    status_code=200,
+    responses={
+        408: {"description": "Match timeout"}
+    })       
+async def match_user_with_passkey(req: MatchRequest):
+    try:
+        if not user_service.dao.get_by_userid(req.user_id):
+            user_service.register(req.user_name, "password", req.user_id)
+        result = await match_service.passkey_match(req.user_id, req.passkey)
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+    except asyncio.TimeoutError:
+        result = {
+            "status": "failed",
+            "message": "Match timeout"
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_408_REQUEST_TIMEOUT)
 
-@router.get("/game_color")
-async def get_game_color(userid: str = Query(..., alias="userid")):
-    """
-    Spec2: 回傳顏色列表，格式為 JSON
-    """
-    room_id = matchup_service.get_room_id(userid)
-    if not room_id:
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "User not matched"})
-
-    data = matchup_service.get_game_data_for_user(userid)
-    if data:
-        return JSONResponse(content={"color": data.get("colors", [])})
-    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "Color data not found"})
+@router.post(
+    "/cancel",
+    status_code=200,
+    responses={
+        500: {"description": "Internal Server Error"}
+    })
+async def cancel(req: MatchRequest):
+    try:
+        await match_service.cancel_match(req.user_id)
+        result = {
+            "status": "successed"
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+    except Exception as e:
+        resutl = {
+            "message": str(e)
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
