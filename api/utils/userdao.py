@@ -15,9 +15,9 @@ class UserDAO:
         return self._base_dir / f"{user_id}.json"
 
     def save(self, user: User):
-        existing = self.get_by_account_name(user.account_name)
+        existing = self.get_by_userid(user.user_id)
         if existing:
-            raise ValueError(f"account_name '{user.account_name}' already exists.")
+            raise ValueError(f"user_id '{user.user_id}' already exists.")
         path = self._user_path(user.user_id)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(user.model_dump(), f, indent=2)
