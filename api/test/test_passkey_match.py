@@ -8,25 +8,33 @@ PASSKEY = "room999"
 async def post_passkey(user_id: str, timeout=35.0):
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
-            match_resp = await client.post(f"{BASE_URL}/passkey", json={"user_id": user_id, "user_name": user_id, "passkey": PASSKEY})
+            match_resp = await client.post(
+                f"{BASE_URL}/anonymous",
+                json={"user_id": user_id, "user_name": user_id}
+            )
             match_data = match_resp.json()
 
             if match_data.get("status") == "matched":
                 room_id = match_data["room_id"]
 
                 users_resp = await client.get(f"{SETUP_BASE_URL}/users", params={"room_id": room_id})
-                game_resp = await client.get(f"{SETUP_BASE_URL}/game", params={"room_id": room_id})
+                game_resp = await client.get(f"{SETUP_BASE_URL}/info", params={"room_id": room_id})
+
+                # 移除 image_base64 欄位
+                game_json = game_resp.json()
+                game_json.pop("image_base64", None)
 
                 return user_id, {
                     "match": match_data,
                     "users": users_resp.json(),
-                    "game": game_resp.json()
+                    "game": game_json
                 }
             else:
                 return user_id, {"match": match_data}
 
         except httpx.ReadTimeout:
             return user_id, "Timeout"
+
 async def cancel_match(user_id: str):
     async with httpx.AsyncClient() as client:
         await client.post(f"{BASE_URL}/cancel", json={"user_id": user_id, "user_name": user_id})

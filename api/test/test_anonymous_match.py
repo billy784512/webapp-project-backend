@@ -17,7 +17,7 @@ async def post_anonymous(user_id: str, timeout=35.0):
                 room_id = match_data["room_id"]
 
                 users_resp = await client.get(f"{SETUP_BASE_URL}/users", params={"room_id": room_id})
-                game_resp = await client.get(f"{SETUP_BASE_URL}/game", params={"room_id": room_id})
+                game_resp = await client.get(f"{SETUP_BASE_URL}/info", params={"room_id": room_id})
 
                 return user_id, {
                     "match": match_data,
