@@ -54,15 +54,39 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('disconnect', () => {
+    socket.on('disconnecting', () => {
         for (const room_id of socket.rooms) {
             if (room_id === socket.id) continue;
-            if (roomPreparedStatus.has(room_id)) {
-                roomPreparedStatus.get(room_id).delete(socket.id);
-                console.log(`${socket.id} disconnected from room ${room_id} (remaining prepared: ${preparedSet.size})`);
-            }
-        }
 
+            const preparedSet = roomPreparedStatus.get(room_id);
+            if (preparedSet) {
+                preparedSet.delete(socket.id);
+            }
+
+            const room = io.sockets.adapter.rooms.get(room_id);
+            if (room) {
+                const allSocketIds = Array.from(room);
+                const opponentId = allSocketIds.find(id => id !== socket.id);
+
+                if (opponentId) {
+                    io.to(opponentId).emit('opponent-disconnected', {
+                        room_id,
+                    });
+
+                    const opponentSocket = io.sockets.sockets.get(opponentId);
+                    if (opponentSocket) {
+                        opponentSocket.leave(room_id);
+                        console.log(`Opponent ${opponentId} removed from room ${room_id}`);
+                    }
+                }
+            }
+
+            roomPreparedStatus.delete(room_id);
+            console.log(`Room ${room_id} cleaned due to ${socket.id} disconnecting`);
+        }
+    });
+
+    socket.on('disconnect', () => {
         console.log(`Client disconnected: ${socket.id}`);
     });
 
