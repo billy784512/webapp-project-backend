@@ -24,7 +24,7 @@ class MatchupService:
         self.passkey_locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
         # key: room_id, val: user_id_list
-        self.room_info_map: Dict[str, RoomInfo] = defaultdict(RoomInfo)
+        self.room_info_map: Dict[str, RoomInfo] = {}
 
         self._matching_task = asyncio.create_task(self._match_anonymous_loop())
         self._cleanup_task = asyncio.create_task(self._cleanup_passkey_queues_loop())
@@ -83,9 +83,21 @@ class MatchupService:
                     continue
                 self.passkey_queues[passkey] = [(f, u) for (f, u) in self.passkey_queues[passkey] if u != user_id]
 
-    def get_userid_by_roomid(self, room_id: str):
+    def get_userid_by_roomid(self, room_id: str) -> List[str]:
         try:
             return self.room_info_map[room_id].user_ids
+        except Exception as e:
+            raise e
+    
+    def get_image_path_by_roomid(self, room_id: str) -> str:
+        try:
+            return self.room_info_map[room_id].image
+        except Exception as e:
+            raise e
+        
+    def get_color_list_by_roomid(self, room_id: str) -> List[str]:
+        try:
+            return self.room_info_map[room_id].color_list
         except Exception as e:
             raise e
     
@@ -97,11 +109,7 @@ class MatchupService:
                 if len(self.anonymous_queue) >= 2:
                     (fut1, user1) = self.anonymous_queue.pop(0)
                     (fut2, user2) = self.anonymous_queue.pop(0)
-
-                    room_id = str(uuid.uuid4())
-                    self.room_info_map[room_id].user_ids.append(user1)
-                    self.room_info_map[room_id].user_ids.append(user2)
-                    self.prepare_room_info(room_id)
+                    room_id = self.prepare_room_info(user1, user2)
 
                     fut1.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2]})
                     fut2.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2]})
@@ -116,11 +124,7 @@ class MatchupService:
 
             fut1, user1 = queue.pop(0)
             fut2, user2 = queue.pop(0)
-
-            room_id = str(uuid.uuid4())
-            self.room_info_map[room_id].user_ids.append(user1)
-            self.room_info_map[room_id].user_ids.append(user2)
-            self.prepare_room_info(room_id)
+            room_id = self.prepare_room_info(user1, user2)
 
             fut1.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2], "passkey": passkey})
             fut2.set_result({"status": "matched", "room_id": room_id, "players": [user1, user2], "passkey": passkey})
@@ -142,13 +146,21 @@ class MatchupService:
 
     # ========== UTILITIES ==========
     
-    def prepare_room_info(self, room_id:str):
+    def prepare_room_info(self, user_id1, user_id2) -> str:
+        room_id = str(uuid.uuid4())
+        room_info = RoomInfo()
+        room_info.user_ids.append(user_id1)
+        room_info.user_ids.append(user_id2)
+
         folder_path = Path(config.DIR.IMAGE).resolve()
         files = [f for f in os.listdir(folder_path)]
 
-        self.room_info_map[room_id].color_list = [f"#{random.randint(0, 0xFFFFFF):06x}" for _ in range(10)]
-        self.room_info_map[room_id].image = os.path.join(folder_path, random.choice(files))
+        room_info.color_list = [f"#{random.randint(0, 0xFFFFFF):06x}" for _ in range(10)]
+        room_info.image = os.path.join(folder_path, random.choice(files))
 
+        self.room_info_map[room_id] = room_info
         print(f"########ROOM_INFO########")
         print(f"room_id: {room_id},\nusers: {self.room_info_map[room_id].user_ids},\nimage: {self.room_info_map[room_id].image},\ncolors: {self.room_info_map[room_id].color_list}")
         print(f"#########################")
+
+        return room_id

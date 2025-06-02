@@ -1,13 +1,32 @@
-import asyncio
 import httpx
+import asyncio
 
 BASE_URL = "http://localhost:8080/match"
+SETUP_BASE_URL = "http://localhost:8080/setup"
 
 async def post_anonymous(user_id: str, timeout=35.0):
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
-            resp = await client.post(f"{BASE_URL}/anonymous", json={"user_id": user_id, "user_name": user_id})
-            return user_id, resp.json()
+            match_resp = await client.post(
+                f"{BASE_URL}/anonymous",
+                json={"user_id": user_id, "user_name": user_id}
+            )
+            match_data = match_resp.json()
+
+            if match_data.get("status") == "matched":
+                room_id = match_data["room_id"]
+
+                users_resp = await client.get(f"{SETUP_BASE_URL}/users", params={"room_id": room_id})
+                game_resp = await client.get(f"{SETUP_BASE_URL}/game", params={"room_id": room_id})
+
+                return user_id, {
+                    "match": match_data,
+                    "users": users_resp.json(),
+                    "game": game_resp.json()
+                }
+            else:
+                return user_id, {"match": match_data}
+
         except httpx.ReadTimeout:
             return user_id, "Timeout"
 

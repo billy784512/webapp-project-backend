@@ -8,7 +8,7 @@ from services.matchup_service import MatchupService
 from services.user_service import UserService
 
 router = APIRouter(prefix="/match")
-match_service = MatchupService().get_instance()
+match_service = MatchupService.get_instance()
 user_service = UserService()
 
 @router.post(
