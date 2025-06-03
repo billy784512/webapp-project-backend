@@ -20,3 +20,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(matchup_router)
 app.include_router(setup_router)
+
+@app.get("/heartbeat")
+async def hello():
+    return {"message": "Hello from FastAPI"}

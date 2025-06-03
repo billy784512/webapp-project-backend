@@ -3,6 +3,7 @@ import base64
 from fastapi import APIRouter, status, Query
 from fastapi.responses import JSONResponse
 
+from models.requests import SubmitRequest
 from services.matchup_service import MatchupService
 from services.user_service import UserService
 
@@ -49,6 +50,26 @@ def get_room_image(room_id: str = Query(...)):
             "status": "success",
             "image_base64": encoded,
             "color_list": color_list
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+    except Exception as e:
+        result = {
+            "status": "failed",
+            "message": "Internal Server Error"
+        }
+        return JSONResponse(content=result, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@router.post("/submit")
+def submit_result(req: SubmitRequest):
+    res = []
+    try:
+        for base64_str in req.base64_strs:
+            score = match_service.calculate_result(req.room_id, base64_str)
+            res.append(score)
+
+        result = {
+            "status": "success",
+            "scores": res
         }
         return JSONResponse(content=result, status_code=status.HTTP_200_OK)
     except Exception as e:

@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import axios from 'axios';
 
 const app = express();
 const server = createServer(app);
@@ -10,6 +11,9 @@ const io = new Server(server, {
 
 // Map<room_id, Set<socket.id>>
 const roomPreparedStatus = new Map();
+
+// Map<room_id, Map<user_id, base64_str>>
+const submissionCache = new Map();
 
 io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
@@ -86,31 +90,70 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        console.log(`Client disconnected: ${socket.id}`);
-    });
-
-    //############################################################
-    socket.on('pick-color', (data) => {
-        io.to(data.room_id).emit('receive-color', {
-            sender: socket.id,
-            message: {
-                user_id: data.user_id,
-                color: data.color
-            }
-        })
-    })
-    
-    socket.on('stroke', (data) => {
-        io.to(data.room_id).emit('receive-stroke', {
+    socket.on("stroke", (data) => {
+        io.to(data.room_id).emit("receive-stroke", {
             sender: socket.id,
             message: {
                 user_id: data.user_id,
                 color: data.color,
-                path: data.path  // array of {x, y}
-            }
+                path: data.path,
+                brushSize: data.brushSize,
+                isEraser: data.isEraser,
+                operationTimestamp: data.operationTimestamp,
+                operationType: data.operationType,
+            },
         });
     });
+
+    socket.on("submit", async (data) => {
+        const { room_id, user_id, base64_str } = data;
+
+        const roomSubmissions = submissionCache.get(room_id);
+        roomSubmissions.set(user_id, base64_str);
+
+        console.log(`[${room_id}] Received submission from ${user_id} (${roomSubmissions.size}/2)`);
+
+        // 如果兩人都提交了
+        if (roomSubmissions.size === 2) {
+            const orderedSubmissions = Array.from(roomSubmissions.entries()); 
+            const base64_strs = orderedSubmissions.map(([_, base64]) => base64);
+            const user_ids = orderedSubmissions.map(([user_id]) => user_id);
+
+            try {
+                const response = await axios.post("http://localhost:8080/api/submit", {
+                    room_id,
+                    base64_strs
+                });
+
+                const scores = response.data.scores;
+
+                const winnerIndex = scores[0] >= scores[1] ? 0 : 1;
+                const winnerUserId = user_ids[winnerIndex];
+
+                io.to(room_id).emit("submit-result", {
+                    winner: winnerUserId,
+                    scores: {
+                        [user_ids[0]]: scores[0],
+                        [user_ids[1]]: scores[1]
+                    }
+                });
+
+                console.log(`[${room_id}] Winner: ${winnerUserId}`);
+
+            } catch (error) {
+                console.error(`[${room_id}] Error comparing drawings:`, error.message);
+                io.to(room_id).emit("submit-error", {
+                    message: "Failed to compare submissions."
+                });
+            } finally {
+                submissionCache.delete(room_id);
+            }
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`Client disconnected: ${socket.id}`);
+    });    
 });
 
 const PORT = 3000;

@@ -2,9 +2,15 @@ import os
 import uuid
 import random
 import asyncio
+import base64
+import io
 from pathlib import Path
 from collections import defaultdict
 from typing import Tuple, Dict, Optional, List
+
+from PIL import Image
+import numpy as np
+from skimage.metrics import structural_similarity as ssim
 
 from models.room_info import RoomInfo
 from utils.config import config
@@ -101,6 +107,24 @@ class MatchupService:
         except Exception as e:
             raise e
     
+    def calculate_result(self, room_id: str, base64_str: str):
+        try:
+            image_data = base64.b64decode(base64_str)
+            user_image = Image.open(io.BytesIO(image_data)).convert("RGB").resize((64, 64))
+
+            image_path = self.get_image_path_by_roomid(room_id)
+            with open(image_path, "rb") as img_file:
+                origin_image = Image.open(io.BytesIO(img_file.read())).convert("RGB").resize((64, 64))
+
+            np_user_img = np.array(user_image, dtype=np.float32) / 255.0
+            np_origin_img = np.array(origin_image, dtype=np.float32) / 255.0
+
+            score, _ = ssim(np_user_img, np_origin_img, channel_axis=-1, full=True)
+            return round(score, 4)
+        except Exception as e:
+            print(f"Error calculating result: {e}")
+            return 0.0
+
     # ========== BACKGROUND TASKS ==========
 
     async def _match_anonymous_loop(self):
@@ -155,7 +179,7 @@ class MatchupService:
         folder_path = Path(config.DIR.IMAGE).resolve()
         files = [f for f in os.listdir(folder_path)]
 
-        room_info.color_list = [f"#{random.randint(0, 0xFFFFFF):06x}" for _ in range(10)]
+        room_info.color_list = [f"#{random.randint(0, 0xFFFFFF):06x}" for _ in range(3)]
         room_info.image = os.path.join(folder_path, random.choice(files))
 
         self.room_info_map[room_id] = room_info
