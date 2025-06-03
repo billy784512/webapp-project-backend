@@ -61,21 +61,28 @@ def get_room_image(room_id: str = Query(...)):
     
 @router.post("/submit")
 def submit_result(req: SubmitRequest):
-    res = []
+    scores_from_service = []
     try:
         for base64_str in req.base64_strs:
             score = match_service.calculate_result(req.room_id, base64_str)
-            res.append(score)
+            scores_from_service.append(score)
 
-        result = {
-            "status": "success",
-            "scores": res
-        }
-        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+        python_float_scores = [float(s) for s in scores_from_service]
+
+        result_payload = {"status": "success", "scores": python_float_scores}
+        return JSONResponse(content=result_payload, status_code=status.HTTP_200_OK)
+
     except Exception as e:
-        result = {
+        print(
+            f"Error in /game/submit for room_id {req.room_id if hasattr(req, 'room_id') else 'Unknown'}: {str(e)}"
+        )
+
+        error_response_payload = {
             "status": "failed",
-            "message": "Internal Server Error"
+            "message": "Internal Server Error occurred while submitting results.",
         }
-        return JSONResponse(content=result, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JSONResponse(
+            content=error_response_payload,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
     

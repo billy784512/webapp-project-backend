@@ -107,22 +107,52 @@ class MatchupService:
         except Exception as e:
             raise e
     
-    def calculate_result(self, room_id: str, base64_str: str):
+    def calculate_result(self, room_id: str, base64_str: str) -> float:
         try:
+            if base64_str.startswith("data:image"):
+                base64_str = base64_str.split(",")[1]
+
             image_data = base64.b64decode(base64_str)
-            user_image = Image.open(io.BytesIO(image_data)).convert("RGB").resize((64, 64))
+
+            user_image_pil = (
+                Image.open(io.BytesIO(image_data)).convert("RGB").resize((64, 64))
+            )
 
             image_path = self.get_image_path_by_roomid(room_id)
+            if not image_path or not os.path.exists(image_path):
+                print(
+                    f"Error: Target image path not found or invalid for room_id {room_id}. Path: {image_path}"
+                )
+                return 0.0
+
             with open(image_path, "rb") as img_file:
-                origin_image = Image.open(io.BytesIO(img_file.read())).convert("RGB").resize((64, 64))
+                origin_image_data = img_file.read()
 
-            np_user_img = np.array(user_image, dtype=np.float32) / 255.0
-            np_origin_img = np.array(origin_image, dtype=np.float32) / 255.0
+            origin_image_pil = (
+                Image.open(io.BytesIO(origin_image_data))
+                .convert("RGB")
+                .resize((64, 64))
+            )
 
-            score, _ = ssim(np_user_img, np_origin_img, channel_axis=-1, full=True)
-            return round(score, 4)
+            np_user_img = np.array(user_image_pil, dtype=np.float32) / 255.0
+            np_origin_img = np.array(origin_image_pil, dtype=np.float32) / 255.0
+
+            ssim_score, diff_img = ssim(
+                np_user_img,
+                np_origin_img,
+                channel_axis=-1,
+                full=True,
+                data_range=1.0,
+                win_size=7,
+            )
+
+            scaled_score = (ssim_score + 1) * 50
+
+            final_score = round(max(0, min(100, scaled_score)), 2)
+
+            return final_score
         except Exception as e:
-            print(f"Error calculating result: {e}")
+            print(f"Unexpected error in calculate_result (room {room_id}): {str(e)}")
             return 0.0
 
     # ========== BACKGROUND TASKS ==========
