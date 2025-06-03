@@ -1,231 +1,477 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "FastAPI",
-    "version": "0.1.0"
-  },
-  "paths": {
-    "/auth/register": {
-      "post": {
-        "summary": "Register User",
-        "operationId": "register_user_auth_register_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request (e.g. duplicate account)"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/login": {
-      "post": {
-        "summary": "Login",
-        "operationId": "login_auth_login_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Account name not existed or wrong password"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/match": {
-      "post": {
-        "summary": "Match User",
-        "operationId": "match_user_match_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MatchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "408": {
-            "description": "Match timeout"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
+   "openapi":"3.1.0",
+   "info":{
+      "title":"FastAPI",
+      "version":"0.1.0"
+   },
+   "paths":{
+      "/auth/register":{
+         "post":{
+            "summary":"Register User",
+            "operationId":"register_user_auth_register_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/RegisterRequest"
+                     }
+                  }
+               },
+               "required":true
             },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
+            "responses":{
+               "201":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "400":{
+                  "description":"Bad Request (e.g. duplicate account)"
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
       },
-      "LoginRequest": {
-        "properties": {
-          "account_name": {
-            "type": "string",
-            "title": "Account Name"
-          },
-          "password": {
-            "type": "string",
-            "title": "Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "account_name",
-          "password"
-        ],
-        "title": "LoginRequest"
-      },
-      "MatchRequest": {
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "title": "User Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "user_id"
-        ],
-        "title": "MatchRequest"
-      },
-      "RegisterRequest": {
-        "properties": {
-          "account_name": {
-            "type": "string",
-            "title": "Account Name"
-          },
-          "password": {
-            "type": "string",
-            "title": "Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "account_name",
-          "password"
-        ],
-        "title": "RegisterRequest"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
+      "/auth/login":{
+         "post":{
+            "summary":"Login",
+            "operationId":"login_auth_login_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/LoginRequest"
+                     }
+                  }
+               },
+               "required":true
             },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "401":{
+                  "description":"Account name not existed or wrong password"
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/match/anonymous":{
+         "post":{
+            "summary":"Match User",
+            "operationId":"match_user_match_anonymous_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/MatchRequest"
+                     }
+                  }
+               },
+               "required":true
+            },
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "408":{
+                  "description":"Match timeout"
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/match/passkey":{
+         "post":{
+            "summary":"Match User With Passkey",
+            "operationId":"match_user_with_passkey_match_passkey_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/MatchRequest"
+                     }
+                  }
+               },
+               "required":true
+            },
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "408":{
+                  "description":"Match timeout"
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/match/cancel":{
+         "post":{
+            "summary":"Cancel",
+            "operationId":"cancel_match_cancel_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/MatchRequest"
+                     }
+                  }
+               },
+               "required":true
+            },
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "500":{
+                  "description":"Internal Server Error"
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/game/users":{
+         "get":{
+            "summary":"Get Room Users",
+            "operationId":"get_room_users_game_users_get",
+            "parameters":[
+               {
+                  "name":"room_id",
+                  "in":"query",
+                  "required":true,
+                  "schema":{
+                     "type":"string",
+                     "title":"Room Id"
+                  }
+               }
+            ],
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/game/info":{
+         "get":{
+            "summary":"Get Room Image",
+            "operationId":"get_room_image_game_info_get",
+            "parameters":[
+               {
+                  "name":"room_id",
+                  "in":"query",
+                  "required":true,
+                  "schema":{
+                     "type":"string",
+                     "title":"Room Id"
+                  }
+               }
+            ],
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/game/submit":{
+         "post":{
+            "summary":"Submit Result",
+            "operationId":"submit_result_game_submit_post",
+            "requestBody":{
+               "content":{
+                  "application/json":{
+                     "schema":{
+                        "$ref":"#/components/schemas/SubmitRequest"
+                     }
+                  }
+               },
+               "required":true
+            },
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               },
+               "422":{
+                  "description":"Validation Error",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           "$ref":"#/components/schemas/HTTPValidationError"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/heartbeat":{
+         "get":{
+            "summary":"Hello",
+            "operationId":"hello_heartbeat_get",
+            "responses":{
+               "200":{
+                  "description":"Successful Response",
+                  "content":{
+                     "application/json":{
+                        "schema":{
+                           
+                        }
+                     }
+                  }
+               }
+            }
+         }
       }
-    }
-  }
+   },
+   "components":{
+      "schemas":{
+         "HTTPValidationError":{
+            "properties":{
+               "detail":{
+                  "items":{
+                     "$ref":"#/components/schemas/ValidationError"
+                  },
+                  "type":"array",
+                  "title":"Detail"
+               }
+            },
+            "type":"object",
+            "title":"HTTPValidationError"
+         },
+         "LoginRequest":{
+            "properties":{
+               "account_name":{
+                  "type":"string",
+                  "title":"Account Name"
+               },
+               "password":{
+                  "type":"string",
+                  "title":"Password"
+               }
+            },
+            "type":"object",
+            "required":[
+               "account_name",
+               "password"
+            ],
+            "title":"LoginRequest"
+         },
+         "MatchRequest":{
+            "properties":{
+               "user_id":{
+                  "type":"string",
+                  "title":"User Id"
+               },
+               "user_name":{
+                  "type":"string",
+                  "title":"User Name"
+               },
+               "passkey":{
+                  "type":"string",
+                  "title":"Passkey"
+               }
+            },
+            "type":"object",
+            "required":[
+               "user_id",
+               "user_name"
+            ],
+            "title":"MatchRequest"
+         },
+         "RegisterRequest":{
+            "properties":{
+               "account_name":{
+                  "type":"string",
+                  "title":"Account Name"
+               },
+               "password":{
+                  "type":"string",
+                  "title":"Password"
+               }
+            },
+            "type":"object",
+            "required":[
+               "account_name",
+               "password"
+            ],
+            "title":"RegisterRequest"
+         },
+         "SubmitRequest":{
+            "properties":{
+               "base64_strs":{
+                  "items":{
+                     "type":"string"
+                  },
+                  "type":"array",
+                  "title":"Base64 Strs"
+               },
+               "room_id":{
+                  "type":"string",
+                  "title":"Room Id"
+               }
+            },
+            "type":"object",
+            "required":[
+               "base64_strs",
+               "room_id"
+            ],
+            "title":"SubmitRequest"
+         },
+         "ValidationError":{
+            "properties":{
+               "loc":{
+                  "items":{
+                     "anyOf":[
+                        {
+                           "type":"string"
+                        },
+                        {
+                           "type":"integer"
+                        }
+                     ]
+                  },
+                  "type":"array",
+                  "title":"Location"
+               },
+               "msg":{
+                  "type":"string",
+                  "title":"Message"
+               },
+               "type":{
+                  "type":"string",
+                  "title":"Error Type"
+               }
+            },
+            "type":"object",
+            "required":[
+               "loc",
+               "msg",
+               "type"
+            ],
+            "title":"ValidationError"
+         }
+      }
+   }
 }
