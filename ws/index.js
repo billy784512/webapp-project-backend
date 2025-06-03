@@ -108,6 +108,10 @@ io.on('connection', (socket) => {
     socket.on("submit", async (data) => {
         const { room_id, user_id, base64_str } = data;
 
+        if (!submissionCache.has(room_id)) {
+            submissionCache.set(room_id, new Map());
+        }
+
         const roomSubmissions = submissionCache.get(room_id);
         roomSubmissions.set(user_id, base64_str);
 
@@ -120,7 +124,7 @@ io.on('connection', (socket) => {
             const user_ids = orderedSubmissions.map(([user_id]) => user_id);
 
             try {
-                const response = await axios.post("http://localhost:8080/api/submit", {
+                const response = await axios.post("http://127.0.0.1:8080/game/submit", {
                     room_id,
                     base64_strs
                 });
